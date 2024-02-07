@@ -124,6 +124,7 @@ class ApiTest extends TestCase {
 		$userStatusManager = $this->createMock(IUserStatusManager::class);
 		$previewManager = $this->createMock(IPreview::class);
 		$dateTimeZone = $this->createMock(IDateTimeZone::class);
+		$dateTimeZone->method('getTimeZone')->willReturn(new \DateTimeZone('Pacific/Auckland'));
 
 		return new ShareAPIController(
 			self::APP_NAME,
@@ -1059,10 +1060,10 @@ class ApiTest extends TestCase {
 		$config->setAppValue('core', 'shareapi_default_expire_date', 'yes');
 		$config->setAppValue('core', 'shareapi_enforce_expire_date', 'yes');
 
-		$dateWithinRange = new \DateTime();
+		$dateWithinRange = new \DateTime('now', new \DateTimeZone('Pacific/Auckland'));
 		$dateWithinRange->setTime(0, 0, 0);
 		$dateWithinRange->add(new \DateInterval('P5D'));
-		$dateOutOfRange = new \DateTime();
+		$dateOutOfRange = new \DateTime('now', new \DateTimeZone('Pacific/Auckland'));
 		$dateOutOfRange->setTime(0, 0, 0);
 		$dateOutOfRange->add(new \DateInterval('P8D'));
 
@@ -1286,13 +1287,15 @@ class ApiTest extends TestCase {
 	}
 
 	public function datesProvider() {
-		$date = new \DateTime();
+		$date = new \DateTime('now', new \DateTimeZone('Pacific/Auckland'));
+		$date->setTime(0, 0);
 		$date->add(new \DateInterval('P5D'));
+		$date->setTimezone(new \DateTimeZone(date_default_timezone_get()));
 
 		return [
-			[$date->format('Y-m-d'), true],
+			[$date->format('Y-m-d H:i:s'), true],
 			['abc', false],
-			[$date->format('Y-m-d') . 'xyz', false],
+			[$date->format('Y-m-d H:i:s') . 'xyz', false],
 		];
 	}
 
@@ -1318,7 +1321,7 @@ class ApiTest extends TestCase {
 
 		$data = $result->getData();
 		$this->assertTrue(is_string($data['token']));
-		$this->assertEquals($date, substr($data['expiration'], 0, 10));
+		$this->assertEquals(substr($date, 0, 10), substr($data['expiration'], 0, 10));
 
 		// check for correct link
 		$url = \OC::$server->getURLGenerator()->getAbsoluteURL('/index.php/s/' . $data['token']);
@@ -1326,7 +1329,7 @@ class ApiTest extends TestCase {
 
 		$share = $this->shareManager->getShareById('ocinternal:'.$data['id']);
 
-		$this->assertEquals($date, $share->getExpirationDate()->format('Y-m-d'));
+		$this->assertEquals($date, $share->getExpirationDate()->format('Y-m-d H:i:s'));
 
 		$this->shareManager->deleteShare($share);
 	}
@@ -1341,7 +1344,7 @@ class ApiTest extends TestCase {
 		$config->setAppValue('core', 'shareapi_default_expire_date', 'yes');
 		$config->setAppValue('core', 'shareapi_enforce_expire_date', 'yes');
 
-		$date = new \DateTime();
+		$date = new \DateTime('now', new \DateTimeZone('Pacific/Auckland'));
 		$date->add(new \DateInterval('P5D'));
 
 		$ocs = $this->createOCS(self::TEST_FILES_SHARING_API_USER1);
@@ -1350,7 +1353,7 @@ class ApiTest extends TestCase {
 
 		$data = $result->getData();
 		$this->assertTrue(is_string($data['token']));
-		$this->assertEquals($date->format('Y-m-d') . ' 00:00:00', $data['expiration']);
+		$this->assertEquals($date->format('Y-m-d 00:00:00'), $data['expiration']);
 
 		// check for correct link
 		$url = \OC::$server->getURLGenerator()->getAbsoluteURL('/index.php/s/' . $data['token']);
